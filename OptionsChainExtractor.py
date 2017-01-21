@@ -111,7 +111,7 @@ class NasdaqOptions(object):
 
             loop += 1
 
-        # Name the column 'Strike'
+        # Name the columns
         old_df.columns =  ['Expire','Call_Last', 'Call_Chg', 'Call_Bid', 'Call_Ask', 'Call_Vol', 'Call_OI','Symbol','Strike',
                                 'Expire_Puts','Put_Last', 'Put_Chg', 'Put_Bid', 'Put_Ask', 'Put_Vol', 'Put_OI']
         old_df = old_df.drop(['Symbol','Expire_Puts'], axis=1)
