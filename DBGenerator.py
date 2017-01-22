@@ -1,0 +1,260 @@
+from pandas_datareader import data
+import datetime
+import pandas as pd
+import numpy as np
+import sqlite3 as sql
+import os
+from itertools import zip_longest
+import time
+from pandas.tseries.offsets import BDay
+
+def add_to_database(init = 0, ticker='', close_date = ''):
+
+    '''get raw data with two nearby options chain'''
+    file1 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_1.csv'
+    file2 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_2.csv'
+
+    if os.path.isfile(file1) and os.path.isfile(file2):
+        pass
+    else:
+        print('equity '+ticker+': options chain at_'+close_date+' not exists, check again!')
+        return
+
+    option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2)],ignore_index=True)
+
+    if init == 1:
+        os.remove("OptionsChain.db")
+        conn = sql.connect('OptionsChain.db')
+        c = conn.cursor()
+
+        '''create relational tables'''
+        c.execute('''CREATE TABLE `Date` (
+                `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `close_date`	TEXT)''')
+
+        c.execute('''CREATE TABLE `Expiry` (
+                `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `expiry_date`	TEXT)''')
+
+        c.execute('''CREATE TABLE `Strike` (
+                `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `strike`	NUMERIC)''')
+
+        c.execute('''CREATE TABLE `Symbol` (
+                `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `symbol`	TEXT)''')
+
+        c.execute('''CREATE TABLE `OptionsChain` (
+                `symbol_id` INTEGER,
+                `date_id`	INTEGER,
+                `expiry_id`	INTEGER,
+                `strike_id`	INTEGER,
+                `call_mark`	NUMERIC,
+                `call_bid`	NUMERIC,
+                `call_ask`	NUMERIC,
+                `call_vol`	INTEGER,
+                `put_mark`	NUMERIC,
+                `put_bid`	NUMERIC,
+                `put_ask`	NUMERIC,
+                `put_vol`	INTEGER)''')
+
+    else:
+        conn = sql.connect('OptionsChain.db')
+        c = conn.cursor()
+
+    if init == 1:
+
+        '''modify Options Chain'''
+        # get market value
+        market_call = 0.5*(option_data['Call_Bid']+option_data['Call_Ask'])
+        option_data['Call_Last'] = np.copy(market_call)
+        market_put = 0.5*(option_data['Put_Bid']+option_data['Put_Ask'])
+        option_data['Put_Last'] = np.copy(market_put)
+
+        # drop nan
+        index_call = list(market_call.index[market_call.apply(np.isnan)])
+        index_put = list(market_put.index[market_put.apply(np.isnan)])
+        index_drop = list(set(index_call).intersection(set(index_put)))
+        option_data = option_data.drop(index_drop)
+
+        '''insert table Date'''
+        c.execute("insert into Date(close_date) values (?)",(close_date,))
+
+        '''insert table Symbol'''
+        c.execute("insert into Symbol(symbol) values (?)",(ticker,))
+
+        '''insert table Expiry'''
+        expiry_date = option_data['Expire'].unique().tolist()
+        insert = [(i,) for i in expiry_date]
+        c.executemany("insert into Expiry (expiry_date) values (?)", insert)
+
+        '''insert table Strike'''
+        strike = sorted(option_data['Strike'].unique().tolist())
+        insert = [(item,) for item in strike]
+        c.executemany("insert into Strike (strike) values (?)", insert)
+
+        # id expiry_date
+        c.execute("select expiry_date from Expiry")
+        expiry_exist = c.fetchall()
+        for item in expiry_date:
+            option_data['Expire'].replace(item,expiry_exist.index((item,))+1,inplace=True)
+        # id close_date
+        c.execute("select close_date from Date")
+        add_date = (c.fetchall().index((close_date,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Close_Date'] = pd.Series(add_date, index=option_data.index)
+        # id strike
+        c.execute("select strike from Strike")
+        strike_exist = c.fetchall()
+        for item in strike:
+            option_data['Strike'].replace(item,strike_exist.index((item,))+1,inplace=True)
+        option_data['Strike'] = option_data['Strike'].astype('int32', copy=True, raise_on_error=True)
+        # id symbol
+        c.execute("select symbol from Symbol")
+        add_symbol = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Symbol'] = pd.Series(add_symbol, index=option_data.index)
+
+        '''insert table OptionsChain'''
+        symbol_id = option_data['Symbol'].tolist()
+        date_id = option_data['Close_Date'].tolist()
+        expiry_id = option_data['Expire'].tolist()
+        strike_id = option_data['Strike'].tolist()
+        insert_cm = option_data['Call_Last'].tolist()
+        insert_cb = option_data['Call_Bid'].tolist()
+        insert_ca = option_data['Call_Ask'].tolist()
+        insert_cv = option_data['Call_Vol'].tolist()
+        insert_pm = option_data['Put_Last'].tolist()
+        insert_pb = option_data['Put_Bid'].tolist()
+        insert_pa = option_data['Put_Ask'].tolist()
+        insert_pv = option_data['Put_Vol'].tolist()
+
+        #print(list(zip_longest(symbol_id,date_id,expiry_id,strike_id,insert_cm,insert_cb,insert_ca,insert_cv,insert_pm,insert_pb,insert_pa,insert_pv)))
+
+        c.executemany("INSERT into OptionsChain VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    zip_longest(symbol_id,date_id,expiry_id,strike_id,insert_cm,insert_cb,insert_ca,insert_cv,insert_pm,insert_pb,insert_pa,insert_pv))
+    else:
+
+        '''modify Options Chain'''
+        # get market value
+        market_call = 0.5*(option_data['Call_Bid']+option_data['Call_Ask'])
+        option_data['Call_Last'] = np.copy(market_call)
+        market_put = 0.5*(option_data['Put_Bid']+option_data['Put_Ask'])
+        option_data['Put_Last'] = np.copy(market_put)
+
+        # drop nan
+        index_call = list(market_call.index[market_call.apply(np.isnan)])
+        index_put = list(market_put.index[market_put.apply(np.isnan)])
+        index_drop = list(set(index_call).intersection(set(index_put)))
+        option_data = option_data.drop(index_drop)
+
+        '''insert table Date'''
+        c.execute("select close_date from Date")
+        date_exist = c.fetchall()
+        if (close_date,) in date_exist:
+            pass
+        else:
+            c.execute("insert into Date(close_date) values (?)",(close_date,))
+
+        '''insert table Symbol'''
+        c.execute("select symbol from Symbol")
+        symbol_exist = c.fetchall()
+        if (ticker,) in symbol_exist:
+            pass
+        else:
+            c.execute("insert into Symbol(symbol) values (?)",(ticker,))
+
+        '''insert table Expiry'''
+        c.execute("select expiry_date from Expiry")
+        expiry_exist = c.fetchall()
+        expiry_date = option_data['Expire'].unique().tolist()
+        insert = [(item,) for item in expiry_date]
+        for item in expiry_exist:
+            if item in insert:
+                del insert[insert.index(item)]
+        if insert != []:
+            c.executemany("insert into Expiry (expiry_date) values (?)", insert)
+
+        #c.execute("select expiry_date from Expiry")
+        #tmp = c.fetchall()
+        #print(len(tmp),len(set(tmp))) # check duplicate date
+
+        '''insert table Strike'''
+        c.execute("select strike from Strike")
+        strike_exist = c.fetchall()
+        strike = sorted(option_data['Strike'].unique().tolist())
+        insert = [(item,) for item in strike]
+        for item in strike_exist:
+            if item in insert:
+                del insert[insert.index(item)]
+        if insert != []:
+            c.executemany("insert into Strike (strike) values (?)", insert)
+
+        #c.execute("select strike from Strike")
+        #tmp = c.fetchall()
+        #print(len(tmp),len(set(tmp))) # check duplicate strike
+
+
+        # id expiry_date
+        c.execute("select expiry_date from Expiry")
+        expiry_exist = c.fetchall()
+        for item in expiry_date:
+            option_data['Expire'].replace(item,expiry_exist.index((item,))+1,inplace=True)
+        # id close_date
+        c.execute("select close_date from Date")
+        add_date = (c.fetchall().index((close_date,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Close_Date'] = pd.Series(add_date, index=option_data.index)
+        # id strike
+        c.execute("select strike from Strike")
+        strike_exist = c.fetchall()
+        for item in strike:
+            option_data['Strike'].replace(item,strike_exist.index((item,))+1,inplace=True)
+        option_data['Strike'] = option_data['Strike'].astype('int32', copy=True, raise_on_error=True)
+        # id symbol
+        c.execute("select symbol from Symbol")
+        add_symbol = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Symbol'] = pd.Series(add_symbol, index=option_data.index)
+
+        '''insert table OptionsChain'''
+        symbol_id = option_data['Symbol'].tolist()
+        date_id = option_data['Close_Date'].tolist()
+        expiry_id = option_data['Expire'].tolist()
+        strike_id = option_data['Strike'].tolist()
+        insert_cm = option_data['Call_Last'].tolist()
+        insert_cb = option_data['Call_Bid'].tolist()
+        insert_ca = option_data['Call_Ask'].tolist()
+        insert_cv = option_data['Call_Vol'].tolist()
+        insert_pm = option_data['Put_Last'].tolist()
+        insert_pb = option_data['Put_Bid'].tolist()
+        insert_pa = option_data['Put_Ask'].tolist()
+        insert_pv = option_data['Put_Vol'].tolist()
+
+        #print(list(zip_longest(symbol_id,date_id,expiry_id,strike_id,insert_cm,insert_cb,insert_ca,insert_cv,insert_pm,insert_pb,insert_pa,insert_pv)))
+
+        c.executemany("INSERT into OptionsChain VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    zip_longest(symbol_id,date_id,expiry_id,strike_id,insert_cm,insert_cb,insert_ca,insert_cv,insert_pm,insert_pb,insert_pa,insert_pv))
+
+#    print(option_data.head())
+
+    conn.commit()
+    c.close()
+
+if __name__ == '__main__':
+
+    t0 = time.time()
+
+    # initialize database with NVDA
+    add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
+
+    # add more symbols with more dates
+    for symbol in ['TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
+        add_to_database(init=2,ticker=symbol,close_date = str(datetime.date(2017,1,13)))
+
+    start = datetime.date(2017,1,17)
+    end = datetime.date.today()
+    daydiff = (end - start).days
+    for i in range(daydiff):
+        tmp_date = str(start + BDay(i))[:10]
+        for symbol in ['NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
+            add_to_database(init=2,ticker=symbol,close_date = tmp_date)
+            #print('Adding '+symbol+' at '+tmp_date+' to the database...')
+
+    print(time.time() - t0, "seconds wall time")
