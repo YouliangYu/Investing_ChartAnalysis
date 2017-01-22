@@ -10,6 +10,7 @@ import time
 
 class NasdaqOptions(object):
     '''
+    adapted from https://quantcorner.wordpress.com/2015/11/02/fetching-nasdaq-options-data-with-python/
     Class NasdaqOptions fetches options data from Nasdaq website
 
     User inputs:
