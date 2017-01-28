@@ -13,13 +13,16 @@ def add_to_database(init = 0, ticker='', close_date = ''):
     '''get raw data with two nearby options chain'''
     file1 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_1.csv'
     file2 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_2.csv'
+#    file3 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_3.csv'
 
+#    if os.path.isfile(file1) and os.path.isfile(file2) and os.path.isfile(file3):
     if os.path.isfile(file1) and os.path.isfile(file2):
-        pass
+         pass
     else:
         print('equity '+ticker+': options chain at_'+close_date+' not exists, check again!')
         return
 
+#    option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2),pd.read_csv(file3)],ignore_index=True)
     option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2)],ignore_index=True)
 
     if init == 1:
@@ -28,7 +31,7 @@ def add_to_database(init = 0, ticker='', close_date = ''):
         c = conn.cursor()
 
         '''create relational tables'''
-        c.execute('''CREATE TABLE `Date` (
+        c.execute('''CREATE TABLE `Dates` (
                 `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 `close_date`	TEXT)''')
 
@@ -38,11 +41,11 @@ def add_to_database(init = 0, ticker='', close_date = ''):
 
         c.execute('''CREATE TABLE `Strike` (
                 `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `strike`	NUMERIC)''')
+                `strike_price`	NUMERIC)''')
 
         c.execute('''CREATE TABLE `Symbol` (
                 `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `symbol`	TEXT)''')
+                `ticker`	TEXT)''')
 
         c.execute('''CREATE TABLE `OptionsChain` (
                 `symbol_id` INTEGER,
@@ -77,41 +80,45 @@ def add_to_database(init = 0, ticker='', close_date = ''):
         index_drop = list(set(index_call).intersection(set(index_put)))
         option_data = option_data.drop(index_drop)
 
-        '''insert table Date'''
-        c.execute("insert into Date(close_date) values (?)",(close_date,))
+        '''insert table Dates'''
+        c.execute("insert into Dates(close_date) values (?)",(close_date,))
 
         '''insert table Symbol'''
-        c.execute("insert into Symbol(symbol) values (?)",(ticker,))
+        c.execute("insert into Symbol(ticker) values (?)",(ticker,))
 
         '''insert table Expiry'''
         expiry_date = option_data['Expire'].unique().tolist()
+
         insert = [(i,) for i in expiry_date]
         c.executemany("insert into Expiry (expiry_date) values (?)", insert)
 
         '''insert table Strike'''
-        strike = sorted(option_data['Strike'].unique().tolist())
-        insert = [(item,) for item in strike]
-        c.executemany("insert into Strike (strike) values (?)", insert)
+        strike_price = option_data['Strike'].unique().tolist()
+        insert = [(item,) for item in strike_price]
+        c.executemany("insert into Strike (strike_price) values (?)", insert)
 
         # id expiry_date
         c.execute("select expiry_date from Expiry")
-        expiry_exist = c.fetchall()
+        expiry_exist = list(c.fetchall())
         for item in expiry_date:
-            option_data['Expire'].replace(item,expiry_exist.index((item,))+1,inplace=True)
+            option_data['Expire'].replace(item, expiry_exist.index((item,))+1, inplace = True)
         # id close_date
-        c.execute("select close_date from Date")
+        c.execute("select close_date from Dates")
         add_date = (c.fetchall().index((close_date,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
         option_data['Close_Date'] = pd.Series(add_date, index=option_data.index)
-        # id strike
-        c.execute("select strike from Strike")
-        strike_exist = c.fetchall()
-        for item in strike:
-            option_data['Strike'].replace(item,strike_exist.index((item,))+1,inplace=True)
+        # id strike_price
+        c.execute("select strike_price from Strike")
+        strike_price_exist = c.fetchall()
+        for item in strike_price:
+            option_data['Strike'].replace(item, str(strike_price_exist.index((item,))+1), inplace = True)
+
         option_data['Strike'] = option_data['Strike'].astype('int32', copy=True, raise_on_error=True)
-        # id symbol
-        c.execute("select symbol from Symbol")
-        add_symbol = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
-        option_data['Symbol'] = pd.Series(add_symbol, index=option_data.index)
+#        print(option_data['Strike'].head(10))
+
+        # id ticker
+        c.execute("select ticker from Symbol")
+        add_ticker = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Symbol'] = pd.Series(add_ticker, index=option_data.index)
 
         '''insert table OptionsChain'''
         symbol_id = option_data['Symbol'].tolist()
@@ -146,21 +153,21 @@ def add_to_database(init = 0, ticker='', close_date = ''):
         index_drop = list(set(index_call).intersection(set(index_put)))
         option_data = option_data.drop(index_drop)
 
-        '''insert table Date'''
-        c.execute("select close_date from Date")
+        '''insert table Dates'''
+        c.execute("select close_date from Dates")
         date_exist = c.fetchall()
         if (close_date,) in date_exist:
             pass
         else:
-            c.execute("insert into Date(close_date) values (?)",(close_date,))
+            c.execute("insert into Dates(close_date) values (?)",(close_date,))
 
         '''insert table Symbol'''
-        c.execute("select symbol from Symbol")
-        symbol_exist = c.fetchall()
-        if (ticker,) in symbol_exist:
+        c.execute("select ticker from Symbol")
+        ticker_exist = c.fetchall()
+        if (ticker,) in ticker_exist:
             pass
         else:
-            c.execute("insert into Symbol(symbol) values (?)",(ticker,))
+            c.execute("insert into Symbol(ticker) values (?)",(ticker,))
 
         '''insert table Expiry'''
         c.execute("select expiry_date from Expiry")
@@ -178,40 +185,42 @@ def add_to_database(init = 0, ticker='', close_date = ''):
         #print(len(tmp),len(set(tmp))) # check duplicate date
 
         '''insert table Strike'''
-        c.execute("select strike from Strike")
-        strike_exist = c.fetchall()
-        strike = sorted(option_data['Strike'].unique().tolist())
-        insert = [(item,) for item in strike]
-        for item in strike_exist:
+        c.execute("select strike_price from Strike")
+        strike_price_exist = c.fetchall()
+#        strike_price = sorted(option_data['Strike'].unique().tolist())
+        strike_price = option_data['Strike'].unique().tolist()
+
+        insert = [(item,) for item in strike_price]
+        for item in strike_price_exist:
             if item in insert:
                 del insert[insert.index(item)]
         if insert != []:
-            c.executemany("insert into Strike (strike) values (?)", insert)
+            c.executemany("insert into Strike (strike_price) values (?)", insert)
 
-        #c.execute("select strike from Strike")
+        #c.execute("select strike_price from Strike")
         #tmp = c.fetchall()
-        #print(len(tmp),len(set(tmp))) # check duplicate strike
-
+        #print(len(tmp),len(set(tmp))) # check duplicate strike_price
 
         # id expiry_date
         c.execute("select expiry_date from Expiry")
         expiry_exist = c.fetchall()
         for item in expiry_date:
-            option_data['Expire'].replace(item,expiry_exist.index((item,))+1,inplace=True)
+            option_data['Expire'].replace(item,expiry_exist.index((item,))+1, inplace = True)
         # id close_date
-        c.execute("select close_date from Date")
+        c.execute("select close_date from Dates")
         add_date = (c.fetchall().index((close_date,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
         option_data['Close_Date'] = pd.Series(add_date, index=option_data.index)
-        # id strike
-        c.execute("select strike from Strike")
-        strike_exist = c.fetchall()
-        for item in strike:
-            option_data['Strike'].replace(item,strike_exist.index((item,))+1,inplace=True)
+        # id strike_price
+        c.execute("select strike_price from Strike")
+        strike_price_exist = c.fetchall()
+        for item in strike_price:
+            option_data['Strike'].replace(item, str(strike_price_exist.index((item,))+1), inplace = True)
         option_data['Strike'] = option_data['Strike'].astype('int32', copy=True, raise_on_error=True)
-        # id symbol
-        c.execute("select symbol from Symbol")
-        add_symbol = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
-        option_data['Symbol'] = pd.Series(add_symbol, index=option_data.index)
+
+        # id ticker
+        c.execute("select ticker from Symbol")
+        add_ticker = (c.fetchall().index((ticker,))+1)*np.ones((option_data.shape[0],), dtype=np.int)
+        option_data['Symbol'] = pd.Series(add_ticker, index=option_data.index)
 
         '''insert table OptionsChain'''
         symbol_id = option_data['Symbol'].tolist()
@@ -241,20 +250,20 @@ if __name__ == '__main__':
 
     t0 = time.time()
 
-    # initialize database with NVDA
+    #initialize database with NVDA
     add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
 
-    # add more symbols with more dates
-    for symbol in ['TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
-        add_to_database(init=2,ticker=symbol,close_date = str(datetime.date(2017,1,13)))
+    # add more tickers with more dates
+    for ticker in ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']:#['TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
+        add_to_database(init=2,ticker=ticker,close_date = str(datetime.date(2017,1,13)))
 
     start = datetime.date(2017,1,17)
     end = datetime.date.today()
     daydiff = (end - start).days
     for i in range(daydiff):
         tmp_date = str(start + BDay(i))[:10]
-        for symbol in ['NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
-            add_to_database(init=2,ticker=symbol,close_date = tmp_date)
-            #print('Adding '+symbol+' at '+tmp_date+' to the database...')
+        for ticker in  ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']:#['NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
+            add_to_database(init=2,ticker=ticker,close_date = tmp_date)
+            print('Added '+ticker+' at '+tmp_date+' to the database...')
 
     print(time.time() - t0, "seconds wall time")
