@@ -121,11 +121,17 @@ class NasdaqOptions(object):
 
 if __name__ == '__main__':
     t0 = time.time()
-    for symbol in ['NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
-        for i in range(1,3):
-            money = 'near'
+    for symbol in ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
+        for i in range(1,4):
+#            money = 'near'
+#            options = NasdaqOptions(symbol,i,money=money)
+#            option_chain = options.get_options_table()
+#            file = '~/computing/investing/OptionBackTester/Data_NearMoney/'+symbol+'_'+money+'_money_'+str(datetime.date.today())+'_'+str(i)+'.csv'
+#            option_chain.to_csv(file,index=False)
+            money = 'all'
             options = NasdaqOptions(symbol,i,money=money)
             option_chain = options.get_options_table()
             file = '~/computing/investing/OptionBackTester/Data/'+symbol+'_'+money+'_money_'+str(datetime.date.today())+'_'+str(i)+'.csv'
             option_chain.to_csv(file,index=False)
+
     print(time.time() - t0, "seconds wall time")
