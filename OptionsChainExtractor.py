@@ -121,7 +121,7 @@ class NasdaqOptions(object):
 
 if __name__ == '__main__':
     t0 = time.time()
-    for symbol in ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
+    for symbol in ['BIDU','INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
         for i in range(1,4):
 #            money = 'near'
 #            options = NasdaqOptions(symbol,i,money=money)
