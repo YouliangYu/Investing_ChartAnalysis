@@ -36,7 +36,9 @@ def iron_condor(ticker, expiry, open_date, close_date, aver_days, dis_bc = 2, ce
         pass
     else:
         center_strike =  int(stock_price["Adj Close"][-1]) #int(stock_price["Adj Close"].mean()) # 20 day average as the strike price
-    delta_strike= int((stock_price["Adj Close"].std()))
+    delta_strike= int((stock_price["Adj Close"].mad()))
+    if delta_strike==0: delta_strike=1
+
     strike_a = int(center_strike)-dis_bc*delta_strike
     strike_b = int(center_strike)-0.5*dis_bc*delta_strike
     strike_c = int(center_strike)+0.5*dis_bc*delta_strike
@@ -154,7 +156,8 @@ def short_strangle(ticker, expiry, open_date, close_date, aver_days, center_stri
     else:
         center_strike = int(stock_price["Adj Close"][-1]) #int(stock_price["Adj Close"].mean()) # 20 day average as the strike price
 
-    delta_strike= int((stock_price["Adj Close"].std()))
+    delta_strike= int((stock_price["Adj Close"].mad()))
+    if delta_strike==0: delta_strike=1
 
     #print('center_strike:', center_strike, 'delta_strike:',delta_strike)
 #    print(stock_price["Adj Close"])
@@ -192,7 +195,6 @@ def short_strangle(ticker, expiry, open_date, close_date, aver_days, center_stri
 
     print('Short Strangle','strikes:',(strike_a,strike_b), 'open: $',open_price*100,'close: $',close_price*100,'return:',(close_price-open_price)/math.fabs(open_price)*100,'%', '\n')
 
-
     return (close_price-open_price)/math.fabs(open_price)
 
 
@@ -213,7 +215,8 @@ def spread(ticker, expiry, open_date, close_date, aver_days, center_strike=0, ty
     else:
         center_strike = int(stock_price["Adj Close"][-1]) #int(stock_price["Adj Close"].mean()) # 20 day average as the strike price
 
-    delta_strike= int((stock_price["Adj Close"].std()))
+    delta_strike= int(stock_price["Adj Close"].mad())
+    if delta_strike==0: delta_strike=1
 
     for row in c.execute('''select ticker, expiry_date, close_date, strike_price, call_mark, put_mark
                         from OptionsChain join Symbol join Expiry join Dates join Strike
@@ -272,7 +275,7 @@ if __name__ == '__main__':
     aver_days = 20
     expiry_date = datetime.date(2017,2,17)
     print(dates)
-    for symbol in ['NVDA','BABA','AAPL','FB']:#,'TSLA','FB','BABA','AAPL']:#['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']
+    for symbol in ['NVDA','BABA','FB','AAPL']:#,'TSLA','FB','BABA','AAPL']:#['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']
         print(symbol)
         center_strike = 0
         ssg = []
@@ -317,15 +320,15 @@ if __name__ == '__main__':
         print(symbol+' Summary')
         print('short strangle:',ssg,ssg_total,ssg.mean(),ssg.std(),ssg_total/ssg.std(),'\n')
         print('short straddle:',ssd,ssd_total,ssd.mean(),ssd.std(),ssd_total/ssd.std(),'\n')
-        print(type,' spread:',sp,sp_total,sp.mean(),sp.std(),sp_total/sp.std(),'\n')
+        print('credit '+type+' spread:',sp,sp_total,sp.mean(),sp.std(),sp_total/sp.std(),'\n')
 #        print((ssg_total,ssd_total,ic_total),(ssg.std(),ssd.std(),ic.std()))
 
         #get sharpo ratio for these three strategies
         open_date = datetime.date.today()
         stock_price = data.DataReader(symbol, 'yahoo', open_date-datetime.timedelta(days=aver_days), open_date)
         center_strike = stock_price["Adj Close"].mean()
-        delta_strike= stock_price["Adj Close"].std()
-        print('Market Price', stock_price["Adj Close"][-1],'Average & S.T.D in last 30 days',center_strike, delta_strike,'\n')
+        delta_strike= stock_price["Adj Close"].mad()
+        print('Market Price', stock_price["Adj Close"][-1],'Average & S.T.D in last 30 days:',center_strike, delta_strike,'\n')
 
         plt.plot(ssg.tolist(), label=symbol+'ssg')
         plt.plot(ssd.tolist(), label=symbol+'ssd')
