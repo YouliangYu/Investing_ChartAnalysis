@@ -272,7 +272,7 @@ if __name__ == '__main__':
     aver_days = 20
     expiry_date = datetime.date(2017,2,17)
     print(dates)
-    for symbol in ['BABA','NVDA','AAPL','FB']:#,'TSLA','FB','BABA','AAPL']:#['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']
+    for symbol in ['NVDA','BABA','AAPL','FB']:#,'TSLA','FB','BABA','AAPL']:#['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']
         print(symbol)
         center_strike = 0
         ssg = []
@@ -325,7 +325,7 @@ if __name__ == '__main__':
         stock_price = data.DataReader(symbol, 'yahoo', open_date-datetime.timedelta(days=aver_days), open_date)
         center_strike = stock_price["Adj Close"].mean()
         delta_strike= stock_price["Adj Close"].std()
-        print('Market Price', stock_price["Adj Close"][-1],'strike and its std for today',center_strike, delta_strike,'\n')
+        print('Market Price', stock_price["Adj Close"][-1],'Average & S.T.D in last 30 days',center_strike, delta_strike,'\n')
 
         plt.plot(ssg.tolist(), label=symbol+'ssg')
         plt.plot(ssd.tolist(), label=symbol+'ssd')
