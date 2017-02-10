@@ -252,15 +252,15 @@ if __name__ == '__main__':
 
     t0 = time.time()
     #initialize database with NVDA
-#    add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
-#    print('Added NVDA at '+str(datetime.date(2017,1,13))+' to the database...')
+    add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
+    print('Added NVDA at '+str(datetime.date(2017,1,13))+' to the database...')
 
     # add more tickers with more dates
-#    for ticker in  ['INTC','AMD','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
-#        add_to_database(init=2,ticker=ticker,close_date = str(datetime.date(2017,1,13)))
-#        print('Added '+ticker+' at '+str(datetime.date(2017,1,13))+' to the database...')
+    for ticker in  ['INTC','AMD','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
+        add_to_database(init=2,ticker=ticker,close_date = str(datetime.date(2017,1,13)))
+        print('Added '+ticker+' at '+str(datetime.date(2017,1,13))+' to the database...')
 
-    start = datetime.date.today()# datetime.date(2017,1,17)
+    start = datetime.date(2017,1,17)
     end = datetime.date.today() + datetime.timedelta(days=1) #datetime.date.today()
     daydiff = (end - start).days
     for i in range(daydiff):
