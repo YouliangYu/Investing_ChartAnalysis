@@ -13,17 +13,19 @@ def add_to_database(init = 0, ticker='', close_date = ''):
     '''get raw data with two nearby options chain'''
     file1 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_1.csv'
     file2 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_2.csv'
-#    file3 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_3.csv'
+    file3 = '/home/youliang/computing/investing/OptionBackTester/Data/'+ticker+'_all_money_'+close_date+'_3.csv' # added at a later time
 
-#    if os.path.isfile(file1) and os.path.isfile(file2) and os.path.isfile(file3):
+#    if os.path.isfile(file1) and os.path.isfile(file2) or os.path.isfile(file3):
     if os.path.isfile(file1) and os.path.isfile(file2):
          pass
     else:
         print('equity '+ticker+': options chain at_'+close_date+' not exists, check again!')
         return
 
-#    option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2),pd.read_csv(file3)],ignore_index=True)
-    option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2)],ignore_index=True)
+    if os.path.isfile(file3):
+        option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2),pd.read_csv(file3)],ignore_index=True)
+    else:
+        option_data = pd.concat([pd.read_csv(file1),pd.read_csv(file2)],ignore_index=True)
 
     if init == 1:
         os.remove("OptionsChain.db")
@@ -249,20 +251,21 @@ def add_to_database(init = 0, ticker='', close_date = ''):
 if __name__ == '__main__':
 
     t0 = time.time()
-
     #initialize database with NVDA
-    add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
+#    add_to_database(init=1,ticker='NVDA',close_date = str(datetime.date(2017,1,13)))
+#    print('Added NVDA at '+str(datetime.date(2017,1,13))+' to the database...')
 
     # add more tickers with more dates
-    for ticker in ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']:#['TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
-        add_to_database(init=2,ticker=ticker,close_date = str(datetime.date(2017,1,13)))
+#    for ticker in  ['INTC','AMD','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
+#        add_to_database(init=2,ticker=ticker,close_date = str(datetime.date(2017,1,13)))
+#        print('Added '+ticker+' at '+str(datetime.date(2017,1,13))+' to the database...')
 
-    start = datetime.date(2017,1,17)
-    end = datetime.date.today()
+    start = datetime.date.today()# datetime.date(2017,1,17)
+    end = datetime.date.today() + datetime.timedelta(days=1) #datetime.date.today()
     daydiff = (end - start).days
     for i in range(daydiff):
         tmp_date = str(start + BDay(i))[:10]
-        for ticker in  ['INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','IBM','GLD','SPY','QQQ']:#['NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY']:
+        for ticker in  ['BIDU','INTC','AMD','NVDA','TSLA','FB','BABA','AAPL','AMZN','GOOG','IBM','GLD','SPY','QQQ']:
             add_to_database(init=2,ticker=ticker,close_date = tmp_date)
             print('Added '+ticker+' at '+tmp_date+' to the database...')
 
